@@ -27,6 +27,7 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
+    // Đăng ký người dùng mới
     public void register(RegisterRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists");
@@ -39,6 +40,7 @@ public class AuthService {
         userRepository.save(user);
     }
 
+    // Đăng nhập người dùng và trả về token JWT
     public AuthResponse login(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
