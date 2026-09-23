@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.projects.PersonalBlog.dto.AuthResponse;
 import com.projects.PersonalBlog.dto.LoginRequest;
+import com.projects.PersonalBlog.dto.RefreshRequest;
 import com.projects.PersonalBlog.dto.RegisterRequest;
 import com.projects.PersonalBlog.entity.User;
 import com.projects.PersonalBlog.repository.UserRepository;
@@ -52,6 +53,31 @@ public class AuthService {
         AuthResponse response = new AuthResponse();
         response.setAccessToken(accessToken);
         response.setRefreshToken(refreshToken);
+        return response;
+    }
+
+    //hàm
+    public AuthResponse refresh(RefreshRequest request) {
+        String token = request.getRefreshToken();
+
+        //kiểm tra xem refreshtoken đã hết hạn chưa
+        if (jwtUtil.isTokenExpired(token)) {
+            throw new RuntimeException("Refresh token expired");
+        }
+
+        //kiểm tra xem có phải refresh token hay không
+        if (!"refresh".equals(jwtUtil.extractType(token))) {
+            throw new RuntimeException("Invalid token type");
+        }
+
+        //sinh ra access token mới
+        String username = jwtUtil.extractUsername(token);
+        String newAccessToken = jwtUtil.generateAccessToken(username);
+
+        //set lại access token
+        AuthResponse response = new AuthResponse();
+        response.setAccessToken(newAccessToken);
+        response.setRefreshToken(token);
         return response;
     }
 }

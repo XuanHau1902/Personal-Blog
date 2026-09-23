@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.projects.PersonalBlog.dto.AuthResponse;
 import com.projects.PersonalBlog.dto.LoginRequest;
+import com.projects.PersonalBlog.dto.RefreshRequest;
 import com.projects.PersonalBlog.dto.RegisterRequest;
 import com.projects.PersonalBlog.service.AuthService;
 
@@ -34,6 +35,13 @@ public class AuthController {
     // phương thức login nhận một yêu cầu đăng nhập, xác thực thông tin đăng nhập của người dùng và trả về một đối tượng AuthResponse chứa access token và refresh token nếu đăng nhập thành công.
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    //phương thức refresh 
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        AuthResponse response = authService.refresh(request);
         return ResponseEntity.ok(response);
     }
 }

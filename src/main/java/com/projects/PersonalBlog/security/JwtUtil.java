@@ -32,6 +32,7 @@ public class JwtUtil {
             .subject(username)
             .issuedAt(new Date())
             .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
+            .claim("type", "access")
             .signWith(getSigningKey())
             .compact();
     }
@@ -68,10 +69,19 @@ public class JwtUtil {
             .subject(username)
             .issuedAt(new Date())
             .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
+            .claim("type", "refresh")
             .signWith(getSigningKey())
             .compact();
     }
 
-    
+    //hàm này để xác định loại token là access hay refresh
+    public String extractType(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("type", String.class);
+    }
 
 }
