@@ -1,37 +1,55 @@
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { api } from "../api";
+import Navbar from "../components/Navbar";
+import PostCard from "../components/PostCard";
+import type { Page, PostResponse } from "../types";
 
 export default function HomePage() {
-  const navigate = useNavigate();
-  const accessToken = localStorage.getItem("accessToken");
+  const [posts, setPosts] = useState<PostResponse[] | null>(null);
+  const [error, setError] = useState("");
 
-  function handleLogout() {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    navigate("/login");
-  }
+  useEffect(() => {
+    api
+      .get<Page<PostResponse>>("/posts")
+      .then((res) => setPosts(res.data.content))
+      .catch(() => setError("Không tải được danh sách bài viết."));
+  }, []);
+
+  const [featured, ...rest] = posts ?? [];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-lg space-y-4">
-        <h1 className="text-xl font-semibold">Personal Blog</h1>
+    <div className="min-h-screen bg-black">
+      <Navbar />
 
-        {accessToken ? (
-          <>
-            <p className="text-green-600">Đã đăng nhập thành công.</p>
-            <p className="text-xs text-gray-500 break-all">
-              Access token: {accessToken}
-            </p>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white rounded px-4 py-2 hover:bg-red-700"
-            >
-              Đăng xuất
-            </button>
-          </>
-        ) : (
-          <p className="text-gray-600">Chưa đăng nhập.</p>
+      <main className="mx-auto max-w-5xl px-6 pb-24 md:px-12">
+        <h1 className="text-5xl font-extrabold tracking-tight text-white md:text-6xl">
+          The Blog
+        </h1>
+
+        {error && <p className="mt-8 text-sm text-red-500">{error}</p>}
+
+        {posts === null && !error && (
+          <p className="mt-12 text-sm text-gray-400">Đang tải...</p>
         )}
-      </div>
+
+        {posts !== null && posts.length === 0 && (
+          <p className="mt-12 text-sm text-gray-400">Chưa có bài viết nào.</p>
+        )}
+
+        {featured && (
+          <div className="mt-12">
+            <PostCard post={featured} featured />
+          </div>
+        )}
+
+        {rest.length > 0 && (
+          <div className="mt-16 grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 md:grid-cols-3">
+            {rest.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   );
 }

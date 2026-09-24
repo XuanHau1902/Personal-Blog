@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import AuthLayout from "../components/AuthLayout";
+import Button from "../components/Button";
+import Input from "../components/Input";
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -24,40 +27,37 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md w-80 space-y-4">
-        <h1 className="text-xl font-semibold text-center">Đăng ký</h1>
+    <AuthLayout title="Đăng ký">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <p className="text-center text-sm text-red-500">{error}</p>}
 
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-
-        <input
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Username"
+        <Input
+          label="Username"
+          name="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          autoComplete="username"
         />
-        <input
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <Input
+          label="Password"
+          name="password"
           type="password"
-          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
         />
 
-        <button
-          disabled={loading}
-          className="w-full bg-blue-600 text-white rounded py-2 hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button type="submit" disabled={loading} className="w-full">
           {loading ? "Đang đăng ký..." : "Đăng ký"}
-        </button>
+        </Button>
 
-        <p className="text-sm text-center text-gray-600">
+        <p className="text-center text-sm text-gray-500">
           Đã có tài khoản?{" "}
-          <Link to="/login" className="text-blue-600 hover:underline">
+          <Link to="/login" className="font-medium text-pink-500 hover:text-pink-600">
             Đăng nhập
           </Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   );
 }
