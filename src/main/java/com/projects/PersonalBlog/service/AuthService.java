@@ -1,5 +1,7 @@
 package com.projects.PersonalBlog.service;
 
+import java.util.DuplicateFormatFlagsException;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -10,6 +12,8 @@ import com.projects.PersonalBlog.dto.LoginRequest;
 import com.projects.PersonalBlog.dto.RefreshRequest;
 import com.projects.PersonalBlog.dto.RegisterRequest;
 import com.projects.PersonalBlog.entity.User;
+import com.projects.PersonalBlog.exception.DuplicateResourceException;
+import com.projects.PersonalBlog.exception.InvalidTokenException;
 import com.projects.PersonalBlog.repository.UserRepository;
 import com.projects.PersonalBlog.security.JwtUtil;
 
@@ -31,7 +35,7 @@ public class AuthService {
     // Đăng ký người dùng mới
     public void register(RegisterRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already exists");
+            throw new DuplicateResourceException("Username already exists");
         }
         User user = new User();
         user.setUsername(request.getUsername());
@@ -62,12 +66,12 @@ public class AuthService {
 
         //kiểm tra xem refreshtoken đã hết hạn chưa
         if (jwtUtil.isTokenExpired(token)) {
-            throw new RuntimeException("Refresh token expired");
+            throw new InvalidTokenException("Refresh token expired");
         }
 
         //kiểm tra xem có phải refresh token hay không
         if (!"refresh".equals(jwtUtil.extractType(token))) {
-            throw new RuntimeException("Invalid token type");
+            throw new InvalidTokenException("Invalid token type");
         }
 
         //sinh ra access token mới

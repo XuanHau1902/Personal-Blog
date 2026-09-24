@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import com.projects.PersonalBlog.entity.User;
-
+import com.projects.PersonalBlog.exception.ResourceNotFoundException;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,7 +37,7 @@ public class PostService {
     //hàm này sẽ tạo một bài viết mới dựa trên dữ liệu từ PostRequest và tên người dùng của tác giả. Nó tìm kiếm người dùng trong cơ sở dữ liệu dựa trên tên người dùng, nếu không tìm thấy sẽ ném ra một ngoại lệ. Sau đó, nó tạo một đối tượng Post mới, thiết lập các trường thông tin từ PostRequest và danh sách thẻ liên quan. Cuối cùng, nó lưu bài viết vào cơ sở dữ liệu và trả về một đối tượng PostResponse chứa thông tin của bài viết vừa được tạo.
     public PostResponse create(PostRequest request, String authorUsername) {
         User author = userRepository.findByUsername(authorUsername)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         Post post = new Post();
         post.setTitle(request.getTitle());
@@ -60,10 +60,10 @@ public class PostService {
     //hàm này sẽ lấy thông tin chi tiết của một bài viết dựa trên ID của nó. Nó sử dụng phương thức findById của postRepository để truy vấn cơ sở dữ liệu. Nếu bài viết với ID được cung cấp tồn tại, nó sẽ chuyển đổi đối tượng Post thành một đối tượng PostResponse và trả về cho client. Nếu bài viết không tồn tại, phương thức sẽ ném ra một ngoại lệ.
     public PostResponse getPostById(Long id, UserDetails userDetails) {
         Post post = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
 
         if (!post.isPublished() && !canViewDraft(post, userDetails)) {
-            throw new RuntimeException("Post not found");
+            throw new ResourceNotFoundException("Post not found");
         }
         return mapToResponse(post);
     }
@@ -81,7 +81,7 @@ public class PostService {
     //hàm này sẽ cập nhật thông tin của một bài viết dựa trên ID của nó và dữ liệu mới từ PostRequest. Nó sử dụng phương thức findById của postRepository để truy vấn cơ sở dữ liệu. Nếu bài viết tồn tại, nó sẽ cập nhật các trường thông tin của bài viết với dữ liệu mới từ PostRequest, bao gồm tiêu đề, nội dung, URL hình ảnh bìa và danh sách thẻ. Sau đó, nó lưu bài viết đã được cập nhật vào cơ sở dữ liệu và trả về một đối tượng PostResponse chứa thông tin mới của bài viết. Nếu bài viết không tồn tại, phương thức sẽ ném ra một ngoại lệ.
     public PostResponse update(Long id, PostRequest request) {
         Post post = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
         post.setCoverImageUrl(request.getCoverImageUrl());
@@ -93,7 +93,9 @@ public class PostService {
 
     //hàm này xử lý việc xóa một bài viết dựa trên ID của nó. Nó sử dụng phương thức deleteById của postRepository để xóa bài viết khỏi cơ sở dữ liệu. Nếu bài viết với ID được cung cấp không tồn tại, phương thức này sẽ ném ra một ngoại lệ.
     public void delete(Long id) {
-        postRepository.deleteById(id);
+        Post post = postRepository.findById(id)
+            .orElseThrow(() ->new ResourceNotFoundException("Post not found"));
+        postRepository.delete(post);
     }
 
     //hàm này sẽ lấy danh sách các tên thẻ từ PostRequest và kiểm tra xem các thẻ này đã tồn tại trong cơ sở dữ liệu hay chưa. Nếu một thẻ chưa tồn tại, nó sẽ tạo một thẻ mới và lưu vào cơ sở dữ liệu. Cuối cùng, hàm này trả về một tập hợp (Set) các đối tượng Tag tương ứng với danh sách tên thẻ đã được cung cấp.

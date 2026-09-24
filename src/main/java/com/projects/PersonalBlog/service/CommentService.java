@@ -9,6 +9,7 @@ import com.projects.PersonalBlog.dto.CommentResponse;
 import com.projects.PersonalBlog.entity.Comment;
 import com.projects.PersonalBlog.entity.Post;
 import com.projects.PersonalBlog.entity.User;
+import com.projects.PersonalBlog.exception.ResourceNotFoundException;
 import com.projects.PersonalBlog.repository.CommentRepository;
 import com.projects.PersonalBlog.repository.PostRepository;
 import com.projects.PersonalBlog.repository.UserRepository;
@@ -28,10 +29,10 @@ public class CommentService {
 
     public CommentResponse create(Long postId, CommentRequest request, String authorUsername) {
         User author = userRepository.findByUsername(authorUsername)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Post post = postRepository.findById(postId)
-            .orElseThrow(() -> new RuntimeException("Post not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
         Comment comment = new Comment();
         comment.setAuthor(author);
         comment.setContent(request.getContent());
@@ -48,7 +49,7 @@ public class CommentService {
 
     public void delete(Long id) {
         Comment comment = commentRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Comment not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
         commentRepository.delete(comment);
     }
 
