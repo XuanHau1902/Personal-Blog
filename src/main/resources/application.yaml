@@ -19,3 +19,7 @@ app:
     access-token-expiration: 900000      # 15 phút, tính bằng ms
     refresh-token-expiration: 604800000  # 7 ngày
     # secret: cung cấp trong application-local.yaml (không commit)
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  # api-key/api-secret: cung cấp trong application-local.yaml (không commit)
