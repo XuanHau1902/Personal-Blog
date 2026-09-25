@@ -51,7 +51,9 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
-        String accessToken = jwtUtil.generateAccessToken(request.getUsername());
+        User user = userRepository.findByUsername(request.getUsername())
+            .orElseThrow(() -> new InvalidTokenException("User not found"));
+        String accessToken = jwtUtil.generateAccessToken(request.getUsername(), user.getRole().name());
         String refreshToken = jwtUtil.generateRefreshToken(request.getUsername());
 
         AuthResponse response = new AuthResponse();
@@ -76,7 +78,9 @@ public class AuthService {
 
         //sinh ra access token mới
         String username = jwtUtil.extractUsername(token);
-        String newAccessToken = jwtUtil.generateAccessToken(username);
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new InvalidTokenException("User not found"));
+        String newAccessToken = jwtUtil.generateAccessToken(username, user.getRole().name());
 
         //set lại access token
         AuthResponse response = new AuthResponse();

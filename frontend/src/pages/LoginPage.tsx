@@ -1,56 +1,50 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { loginSchema, type LoginFormValues } from "../lib/schemas";
 import AuthLayout from "../components/AuthLayout";
 import Button from "../components/Button";
 import Input from "../components/Input";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function onSubmit(values: LoginFormValues) {
     setError("");
-    setLoading(true);
     try {
-      const res = await api.post("/auth/login", { username, password });
+      const res = await api.post("/auth/login", values);
       localStorage.setItem("accessToken", res.data.accessToken);
       localStorage.setItem("refreshToken", res.data.refreshToken);
       navigate("/");
     } catch {
       setError("Sai username hoặc password");
-    } finally {
-      setLoading(false);
     }
   }
 
   return (
     <AuthLayout title="Đăng nhập">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && <p className="text-center text-sm text-red-500">{error}</p>}
 
-        <Input
-          label="Username"
-          name="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          autoComplete="username"
-        />
-        <Input
-          label="Password"
-          name="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-        />
+        <div>
+          <Input label="Username" autoComplete="username" {...register("username")} />
+          {errors.username && <p className="mt-1 text-xs text-red-500">{errors.username.message}</p>}
+        </div>
+        <div>
+          <Input label="Password" type="password" autoComplete="current-password" {...register("password")} />
+          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
+        </div>
 
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+          {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
 
         <p className="text-center text-sm text-gray-500">

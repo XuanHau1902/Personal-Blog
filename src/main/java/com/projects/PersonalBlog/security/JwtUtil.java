@@ -27,12 +27,13 @@ public class JwtUtil {
     }
 
     //Phương thức generateAccessToken(String username) tạo ra một JWT mới với tên người dùng (username) làm chủ đề (subject), thời gian phát hành hiện tại, thời gian hết hạn dựa trên accessTokenExpiration, và ký token bằng khóa bí mật. Token này được sử dụng để xác thực người dùng trong các yêu cầu tiếp theo.
-    public String generateAccessToken(String username) {
+    public String generateAccessToken(String username, String role) {
     return Jwts.builder()
             .subject(username)
             .issuedAt(new Date())
             .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
             .claim("type", "access")
+            .claim("role", role)
             .signWith(getSigningKey())
             .compact();
     }

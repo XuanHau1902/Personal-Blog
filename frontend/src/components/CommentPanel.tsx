@@ -5,11 +5,6 @@ import { getCurrentUsername } from "../lib/auth";
 import type { CommentResponse } from "../types";
 import Button from "./Button";
 
-function authHeader() {
-  const token = localStorage.getItem("accessToken");
-  return { Authorization: `Bearer ${token}` };
-}
-
 interface Props {
   postId: number;
   open: boolean;
@@ -25,13 +20,12 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
   const isAuthed = Boolean(getCurrentUsername());
 
   useEffect(() => {
-    if (!open) return;
     api
       .get<CommentResponse[]>(`/comments/posts/${postId}`)
       .then((res) => setComments(res.data))
       .catch(() => setError("Không tải được bình luận."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, postId]);
+  }, [postId]);
 
   // Reporting the count to the parent is a side effect of `comments` changing,
   // not something to do inside a setState updater (that runs during render).
@@ -46,11 +40,7 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
     setPosting(true);
     setError("");
     try {
-      const res = await api.post<CommentResponse>(
-        `/comments/posts/${postId}`,
-        { content: text },
-        { headers: authHeader() }
-      );
+      const res = await api.post<CommentResponse>(`/comments/posts/${postId}`, { content: text });
       setComments((prev) => [...(prev ?? []), res.data]);
       setText("");
     } catch {

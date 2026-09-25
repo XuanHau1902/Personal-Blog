@@ -1,54 +1,48 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { registerSchema, type RegisterFormValues } from "../lib/schemas";
 import AuthLayout from "../components/AuthLayout";
 import Button from "../components/Button";
 import Input from "../components/Input";
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) });
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function onSubmit(values: RegisterFormValues) {
     setError("");
-    setLoading(true);
     try {
-      await api.post("/auth/register", { username, password });
+      await api.post("/auth/register", values);
       navigate("/login");
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Đăng ký thất bại (username có thể đã tồn tại)");
-    } finally {
-      setLoading(false);
     }
   }
 
   return (
     <AuthLayout title="Đăng ký">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && <p className="text-center text-sm text-red-500">{error}</p>}
 
-        <Input
-          label="Username"
-          name="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          autoComplete="username"
-        />
-        <Input
-          label="Password"
-          name="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="new-password"
-        />
+        <div>
+          <Input label="Username" autoComplete="username" {...register("username")} />
+          {errors.username && <p className="mt-1 text-xs text-red-500">{errors.username.message}</p>}
+        </div>
+        <div>
+          <Input label="Password" type="password" autoComplete="new-password" {...register("password")} />
+          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
+        </div>
 
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Đang đăng ký..." : "Đăng ký"}
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+          {isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
         </Button>
 
         <p className="text-center text-sm text-gray-500">

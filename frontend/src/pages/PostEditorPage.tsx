@@ -1,8 +1,11 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { buildGalleryBlock, splitContent } from "../lib/galleryContent";
-import { getCurrentUsername } from "../lib/auth";
+import { getCurrentUsername, isAdmin } from "../lib/auth";
+import { postEditorSchema, type PostEditorFormValues } from "../lib/schemas";
 import Navbar from "../components/Navbar";
 import Button from "../components/Button";
 import Input from "../components/Input";
@@ -11,16 +14,11 @@ import PostThumbnail from "../components/PostThumbnail";
 import ImageCarousel from "../components/ImageCarousel";
 import type { PostResponse } from "../types";
 
-function authHeader() {
-  const token = localStorage.getItem("accessToken");
-  return { Authorization: `Bearer ${token}` };
-}
-
 async function uploadFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await api.post<{ url: string }>("/files/upload", formData, {
-    headers: { ...authHeader(), "Content-Type": "multipart/form-data" },
+    headers: { "Content-Type": "multipart/form-data" },
   });
   return res.data.url;
 }
@@ -45,17 +43,25 @@ export default function PostEditorPage() {
   const { id } = useParams();
   const isEditMode = Boolean(id);
 
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [tags, setTags] = useState("");
-  const [published, setPublished] = useState(true);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [addingImages, setAddingImages] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditMode);
   const [error, setError] = useState("");
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<PostEditorFormValues>({
+    resolver: zodResolver(postEditorSchema),
+    defaultValues: { title: "", content: "", tags: "", published: true },
+  });
+
+  const titleValue = watch("title");
 
   useEffect(() => {
     if (!id) return;
@@ -63,21 +69,23 @@ export default function PostEditorPage() {
       .get<PostResponse>(`/posts/${id}`)
       .then((res) => {
         const post = res.data;
-        if (post.authorUsername !== getCurrentUsername()) {
+        if (post.authorUsername !== getCurrentUsername() && !isAdmin()) {
           navigate(`/posts/${id}`, { replace: true });
           return;
         }
         const { body, galleryUrls: urls } = unpackContent(post.content);
-        setTitle(post.title);
-        setContent(body);
+        reset({
+          title: post.title,
+          content: body,
+          tags: post.tags.join(", "),
+          published: post.published,
+        });
         setGalleryUrls(urls);
-        setTags(post.tags.join(", "));
-        setPublished(post.published);
         setCoverImageUrl(post.coverImageUrl);
         setLoading(false);
       })
       .catch(() => setError("Không tải được bài viết."));
-  }, [id, navigate]);
+  }, [id, navigate, reset]);
 
   async function handleThumbnailChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -116,28 +124,30 @@ export default function PostEditorPage() {
     }
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function onSubmit(values: PostEditorFormValues) {
     setError("");
-    setSaving(true);
     try {
-      const tagNames = tags
+      const tagNames = values.tags
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
 
-      const fullContent = content + buildGalleryBlock(galleryUrls);
-      const payload = { title, content: fullContent, coverImageUrl, published, tagNames };
+      const fullContent = values.content + buildGalleryBlock(galleryUrls);
+      const payload = {
+        title: values.title,
+        content: fullContent,
+        coverImageUrl,
+        published: values.published,
+        tagNames,
+      };
 
       const res = isEditMode
-        ? await api.put<PostResponse>(`/posts/${id}`, payload, { headers: authHeader() })
-        : await api.post<PostResponse>("/posts", payload, { headers: authHeader() });
+        ? await api.put<PostResponse>(`/posts/${id}`, payload)
+        : await api.post<PostResponse>("/posts", payload);
 
       navigate(`/posts/${res.data.id}`);
     } catch {
       setError(isEditMode ? "Lưu thay đổi thất bại. Vui lòng thử lại." : "Đăng bài thất bại. Vui lòng thử lại.");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -153,14 +163,14 @@ export default function PostEditorPage() {
         {loading ? (
           <p className="mt-12 text-sm text-gray-400">Đang tải...</p>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
             {error && <p className="text-sm text-red-500">{error}</p>}
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-300">Ảnh bìa</label>
               <PostThumbnail
-                postId={title || "preview"}
-                title={title}
+                postId={titleValue || "preview"}
+                title={titleValue}
                 coverImageUrl={coverImageUrl}
                 className="aspect-[16/9] w-full"
               />
@@ -176,17 +186,16 @@ export default function PostEditorPage() {
               </label>
             </div>
 
-            <Input label="Tiêu đề" name="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+            <div>
+              <Input label="Tiêu đề" {...register("title")} />
+              {errors.title && <p className="mt-1 text-xs text-red-500">{errors.title.message}</p>}
+            </div>
 
             <div className="space-y-1.5">
-              <Textarea
-                label="Nội dung"
-                name="content"
-                rows={10}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                required
-              />
+              <div>
+                <Textarea label="Nội dung" rows={10} {...register("content")} />
+                {errors.content && <p className="mt-1 text-xs text-red-500">{errors.content.message}</p>}
+              </div>
               <label>
                 <Button as="span" variant="ghost" className="!px-0" disabled={addingImages}>
                   {addingImages ? "Đang thêm ảnh..." : "+ Thêm ảnh"}
@@ -208,26 +217,19 @@ export default function PostEditorPage() {
               )}
             </div>
 
-            <Input
-              label="Tags (cách nhau bằng dấu phẩy)"
-              name="tags"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="design, ui/ux"
-            />
+            <Input label="Tags (cách nhau bằng dấu phẩy)" placeholder="design, ui/ux" {...register("tags")} />
 
             <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
               <input
                 type="checkbox"
-                checked={published}
-                onChange={(e) => setPublished(e.target.checked)}
+                {...register("published")}
                 className="h-4 w-4 rounded border-gray-600 bg-gray-900 text-pink-500 focus:ring-pink-400"
               />
               Xuất bản ngay
             </label>
 
-            <Button type="submit" disabled={saving || uploading}>
-              {saving ? "Đang lưu..." : isEditMode ? "Lưu thay đổi" : "Đăng bài"}
+            <Button type="submit" disabled={isSubmitting || uploading}>
+              {isSubmitting ? "Đang lưu..." : isEditMode ? "Lưu thay đổi" : "Đăng bài"}
             </Button>
           </form>
         )}

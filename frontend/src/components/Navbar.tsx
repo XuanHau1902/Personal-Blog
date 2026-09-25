@@ -13,8 +13,12 @@ export default function Navbar() {
 
   return (
     <nav className="flex items-center justify-between px-6 py-6 md:px-12">
-      <Link to="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-orange-400 font-bold text-white">
-        P
+      <Link to="/" aria-label="Trang chủ" className="flex h-10 w-10 items-center justify-center">
+        <img
+          src="/favicon.png"
+          alt="Logo"
+          className="h-10 w-10 rounded-full border border-white/70 object-cover"
+        />
       </Link>
 
       <div className="flex items-center gap-6 text-sm font-medium text-gray-400">

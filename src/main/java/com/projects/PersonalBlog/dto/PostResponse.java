@@ -20,5 +20,7 @@ public class PostResponse {
     private boolean published;
     private String authorUsername;
     private Set<String> tags;
+    private Long likeCount;
+    private boolean likedByCurrentUser;
 
 }

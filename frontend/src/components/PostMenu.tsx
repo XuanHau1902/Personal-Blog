@@ -2,11 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 
-function authHeader() {
-  const token = localStorage.getItem("accessToken");
-  return { Authorization: `Bearer ${token}` };
-}
-
 export default function PostMenu({ postId }: { postId: number }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -28,7 +23,7 @@ export default function PostMenu({ postId }: { postId: number }) {
     if (!window.confirm("Xoá bài viết này? Hành động này không thể hoàn tác.")) return;
     setDeleting(true);
     try {
-      await api.delete(`/posts/${postId}`, { headers: authHeader() });
+      await api.delete(`/posts/${postId}`);
       navigate("/");
     } catch {
       window.alert("Xoá bài viết thất bại. Vui lòng thử lại.");

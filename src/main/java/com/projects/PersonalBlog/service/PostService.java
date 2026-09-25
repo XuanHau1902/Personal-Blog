@@ -3,6 +3,7 @@ package com.projects.PersonalBlog.service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import com.projects.PersonalBlog.entity.User;
@@ -13,10 +14,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import com.projects.PersonalBlog.dto.LikeResponse;
 import com.projects.PersonalBlog.dto.PostRequest;
 import com.projects.PersonalBlog.dto.PostResponse;
 import com.projects.PersonalBlog.entity.Post;
+import com.projects.PersonalBlog.entity.PostLike;
 import com.projects.PersonalBlog.entity.Tag;
+import com.projects.PersonalBlog.repository.CommentRepository;
+import com.projects.PersonalBlog.repository.PostLikeRepository;
 import com.projects.PersonalBlog.repository.PostRepository;
 import com.projects.PersonalBlog.repository.TagRepository;
 import com.projects.PersonalBlog.repository.UserRepository;
@@ -27,11 +32,15 @@ public class PostService {
     private final PostRepository postRepository;
     private final TagRepository tagRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
+    private final PostLikeRepository postLikeRepository;
 
-    public PostService(PostRepository postRepository, TagRepository tagRepository, UserRepository userRepository) {
+    public PostService(PostRepository postRepository, TagRepository tagRepository, UserRepository userRepository, CommentRepository commentRepository, PostLikeRepository postLikeRepository) {
         this.postRepository = postRepository;
         this.tagRepository = tagRepository;
         this.userRepository = userRepository;
+        this.commentRepository = commentRepository;
+        this.postLikeRepository = postLikeRepository;
     }
 
     //hàm này sẽ tạo một bài viết mới dựa trên dữ liệu từ PostRequest và tên người dùng của tác giả. Nó tìm kiếm người dùng trong cơ sở dữ liệu dựa trên tên người dùng, nếu không tìm thấy sẽ ném ra một ngoại lệ. Sau đó, nó tạo một đối tượng Post mới, thiết lập các trường thông tin từ PostRequest và danh sách thẻ liên quan. Cuối cùng, nó lưu bài viết vào cơ sở dữ liệu và trả về một đối tượng PostResponse chứa thông tin của bài viết vừa được tạo.
@@ -65,7 +74,7 @@ public class PostService {
         if (!post.isPublished() && !canViewDraft(post, userDetails)) {
             throw new ResourceNotFoundException("Post not found");
         }
-        return mapToResponse(post);
+        return mapToResponse(post, userDetails);
     }
 
     private boolean canViewDraft(Post post, UserDetails currentUser) {
@@ -91,10 +100,34 @@ public class PostService {
         return mapToResponse(updatedPost);
     }
 
+    public LikeResponse toggleLike(Long postId, String username) {
+        postRepository.findById(postId)
+            .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+
+        Optional<PostLike> existingLike = postLikeRepository.findByPostIdAndUserUsername(postId, username);
+        if(existingLike.isPresent()) {
+            postLikeRepository.delete(existingLike.get());
+        } else {
+            User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            Post post = postRepository.findById(postId).orElseThrow();
+            PostLike like = new PostLike();
+            like.setPost(post);
+            like.setUser(user);
+            postLikeRepository.save(like);
+        }
+
+        long likeCount = postLikeRepository.countByPostId(postId);
+        boolean liked = existingLike.isEmpty();
+        return new LikeResponse(likeCount,liked);
+    }
+
     //hàm này xử lý việc xóa một bài viết dựa trên ID của nó. Nó sử dụng phương thức deleteById của postRepository để xóa bài viết khỏi cơ sở dữ liệu. Nếu bài viết với ID được cung cấp không tồn tại, phương thức này sẽ ném ra một ngoại lệ.
     public void delete(Long id) {
         Post post = postRepository.findById(id)
             .orElseThrow(() ->new ResourceNotFoundException("Post not found"));
+        commentRepository.deleteAll(commentRepository.findByPostId(id));
+        postLikeRepository.deleteAll(postLikeRepository.findByPostId(id));
         postRepository.delete(post);
     }
 
@@ -116,13 +149,19 @@ public class PostService {
         return tag;
     }
 
-    //hàm này sẽ chuyển đổi một đối tượng Post (bài viết) thành một đối tượng PostResponse (phản hồi bài viết). Nó lấy thông tin từ bài viết, bao gồm ID, tiêu đề, nội dung, URL hình ảnh bìa, trạng thái xuất bản, tên người dùng của tác giả và danh sách tên thẻ liên quan đến bài viết. Cuối cùng, nó trả về một đối tượng PostResponse chứa tất cả thông tin này để gửi về cho client.
     private PostResponse mapToResponse(Post post) {
+    return mapToResponse(post, null);
+    }
+
+
+    //hàm này sẽ chuyển đổi một đối tượng Post (bài viết) thành một đối tượng PostResponse (phản hồi bài viết). Nó lấy thông tin từ bài viết, bao gồm ID, tiêu đề, nội dung, URL hình ảnh bìa, trạng thái xuất bản, tên người dùng của tác giả và danh sách tên thẻ liên quan đến bài viết. Cuối cùng, nó trả về một đối tượng PostResponse chứa tất cả thông tin này để gửi về cho client.
+    private PostResponse mapToResponse(Post post, UserDetails currentUser) {
         
         Set<String> tagNames = post.getTags().stream()
                 .map(Tag::getName)
                 .collect(Collectors.toSet());
-            
+        long likeCount = postLikeRepository.countByPostId(post.getId());
+        boolean liked = currentUser != null && postLikeRepository.existsByPostIdAndUserUsername(post.getId(), currentUser.getUsername());
             return new PostResponse(
                 post.getId(),
                 post.getTitle(),
@@ -130,7 +169,7 @@ public class PostService {
                 post.getCoverImageUrl(),
                 post.isPublished(),
                 post.getAuthor().getUsername(),
-                tagNames
+                tagNames,likeCount, liked
             );
     }
 }

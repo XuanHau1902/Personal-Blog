@@ -6,6 +6,13 @@ export interface PostResponse {
   published: boolean;
   authorUsername: string;
   tags: string[];
+  likeCount: number;
+  likedByCurrentUser: boolean;
+}
+
+export interface LikeResponse {
+  likeCount: number;
+  liked: boolean;
 }
 
 export interface CommentResponse {

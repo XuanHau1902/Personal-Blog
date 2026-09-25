@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.projects.PersonalBlog.dto.LikeResponse;
 import com.projects.PersonalBlog.dto.PostRequest;
 import com.projects.PersonalBlog.dto.PostResponse;
 import com.projects.PersonalBlog.service.PostService;
@@ -50,6 +52,11 @@ public class PostController {
     //hàm này sẽ xử lý yêu cầu POST đến endpoint "/api/posts" để tạo một bài viết mới. Nó nhận dữ liệu từ client dưới dạng PostRequest và thông tin người dùng hiện tại từ UserDetails. Sau đó, nó sử dụng phương thức create của PostService để tạo bài viết mới và trả về kết quả dưới dạng một đối tượng PostResponse chứa thông tin của bài viết vừa được tạo.
     public PostResponse createPost(@Valid @RequestBody PostRequest request, @AuthenticationPrincipal UserDetails userDetails) {
         return postService.create(request, userDetails.getUsername());
+    }
+
+    @PostMapping("/{id}/likes")
+    public LikeResponse toggleLike(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails) {
+        return postService.toggleLike(id, userDetails.getUsername());
     }
 
     //kiểm tra quyền truy cập: Chỉ cho phép người dùng có vai trò ADMIN hoặc là chủ sở hữu của bài viết mới được phép cập nhật bài viết. Điều này được thực hiện bằng cách sử dụng annotation @PreAuthorize với điều kiện kiểm tra quyền truy cập.
