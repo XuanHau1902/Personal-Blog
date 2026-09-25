@@ -1,6 +1,7 @@
 package com.projects.PersonalBlog.security;
 
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,6 +18,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -66,11 +68,14 @@ public class SecurityConfig {
     return http.build();
     }
 
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
+
     //hàm corsConfigurationSource() tạo ra một cấu hình CORS (Cross-Origin Resource Sharing) cho ứng dụng. CORS là một cơ chế bảo mật trình duyệt cho phép hoặc từ chối các yêu cầu từ các nguồn khác nhau (domain, protocol, port). Trong trường hợp này, cấu hình cho phép các yêu cầu từ "http://localhost:5173" với các phương thức GET, POST, PUT, DELETE và OPTIONS, cũng như tất cả các tiêu đề (headers). Cấu hình này được đăng ký cho tất cả các endpoint của ứng dụng ("/**").
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
 
