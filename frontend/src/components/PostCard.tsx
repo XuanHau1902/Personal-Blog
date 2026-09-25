@@ -29,6 +29,7 @@ export default function PostCard({ post, featured = false }: Props) {
             postId={post.id}
             title={post.title}
             coverImageUrl={post.coverImageUrl}
+            coverImagePosition={post.coverImagePosition}
             className="aspect-[4/3] w-full"
           />
           <div>
@@ -54,6 +55,7 @@ export default function PostCard({ post, featured = false }: Props) {
         postId={post.id}
         title={post.title}
         coverImageUrl={post.coverImageUrl}
+        coverImagePosition={post.coverImagePosition}
         className="aspect-[4/3] w-full"
       />
       <p className="mt-3 text-xs text-gray-400">{post.authorUsername}</p>

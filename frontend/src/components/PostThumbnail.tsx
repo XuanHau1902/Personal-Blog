@@ -4,17 +4,29 @@ interface Props {
   postId: number | string;
   title: string;
   coverImageUrl: string | null;
+  coverImagePosition?: string | null;
+  onClick?: () => void;
   className?: string;
 }
 
-export default function PostThumbnail({ postId, title, coverImageUrl, className = "" }: Props) {
+export default function PostThumbnail({
+  postId,
+  title,
+  coverImageUrl,
+  coverImagePosition,
+  onClick,
+  className = "",
+}: Props) {
   if (coverImageUrl) {
     return (
       <div
-        className={`relative overflow-hidden rounded-2xl bg-cover bg-center ${className}`}
-        style={{ backgroundImage: `url(${coverImageUrl})` }}
-        role="img"
+        className={`relative overflow-hidden rounded-2xl bg-cover ${onClick ? "cursor-zoom-in" : ""} ${className}`}
+        style={{ backgroundImage: `url(${coverImageUrl})`, backgroundPosition: coverImagePosition || "50% 50%" }}
+        role={onClick ? "button" : "img"}
+        tabIndex={onClick ? 0 : undefined}
         aria-label={title}
+        onClick={onClick}
+        onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
       />
     );
   }

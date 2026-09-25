@@ -52,6 +52,7 @@ public class PostService {
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
         post.setCoverImageUrl(request.getCoverImageUrl());
+        post.setCoverImagePosition(request.getCoverImagePosition());
         post.setAuthor(author);
         post.setTags(resolveTags(request.getTagNames()));
         post.setPublished(request.isPublished());
@@ -94,6 +95,7 @@ public class PostService {
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
         post.setCoverImageUrl(request.getCoverImageUrl());
+        post.setCoverImagePosition(request.getCoverImagePosition());
         post.setTags(resolveTags(request.getTagNames()));
         post.setPublished(request.isPublished());
         Post updatedPost = postRepository.save(post);
@@ -167,6 +169,7 @@ public class PostService {
                 post.getTitle(),
                 post.getContent(),
                 post.getCoverImageUrl(),
+                post.getCoverImagePosition(),
                 post.isPublished(),
                 post.getAuthor().getUsername(),
                 tagNames,likeCount, liked

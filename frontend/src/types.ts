@@ -3,6 +3,7 @@ export interface PostResponse {
   title: string;
   content: string;
   coverImageUrl: string | null;
+  coverImagePosition: string | null;
   published: boolean;
   authorUsername: string;
   tags: string[];

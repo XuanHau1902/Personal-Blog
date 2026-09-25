@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useParams } from "react-router-dom";
@@ -44,6 +44,7 @@ export default function PostEditorPage() {
   const isEditMode = Boolean(id);
 
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [coverImagePosition, setCoverImagePosition] = useState<string | null>(null);
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [addingImages, setAddingImages] = useState(false);
@@ -82,6 +83,7 @@ export default function PostEditorPage() {
         });
         setGalleryUrls(urls);
         setCoverImageUrl(post.coverImageUrl);
+        setCoverImagePosition(post.coverImagePosition);
         setLoading(false);
       })
       .catch(() => setError("Không tải được bài viết."));
@@ -95,12 +97,20 @@ export default function PostEditorPage() {
     setError("");
     try {
       setCoverImageUrl(await uploadFile(file));
+      setCoverImagePosition(null);
     } catch {
       setError("Tải thumbnail thất bại.");
     } finally {
       setUploading(false);
       e.target.value = "";
     }
+  }
+
+  function handlePositionPointer(e: ReactPointerEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
+    setCoverImagePosition(`${x.toFixed(0)}% ${y.toFixed(0)}%`);
   }
 
   async function handleAddImages(e: ChangeEvent<HTMLInputElement>) {
@@ -137,6 +147,7 @@ export default function PostEditorPage() {
         title: values.title,
         content: fullContent,
         coverImageUrl,
+        coverImagePosition,
         published: values.published,
         tagNames,
       };
@@ -168,12 +179,38 @@ export default function PostEditorPage() {
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-300">Ảnh bìa</label>
-              <PostThumbnail
-                postId={titleValue || "preview"}
-                title={titleValue}
-                coverImageUrl={coverImageUrl}
-                className="aspect-[16/9] w-full"
-              />
+              <div
+                className={`relative ${coverImageUrl ? "cursor-crosshair touch-none" : ""}`}
+                onPointerDown={(e) => {
+                  if (!coverImageUrl) return;
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  handlePositionPointer(e);
+                }}
+                onPointerMove={(e) => {
+                  if (!coverImageUrl || e.buttons !== 1) return;
+                  handlePositionPointer(e);
+                }}
+              >
+                <PostThumbnail
+                  postId={titleValue || "preview"}
+                  title={titleValue}
+                  coverImageUrl={coverImageUrl}
+                  coverImagePosition={coverImagePosition}
+                  className="aspect-[16/9] w-full"
+                />
+                {coverImageUrl && (
+                  <span
+                    className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md"
+                    style={{
+                      left: coverImagePosition?.split(" ")[0] ?? "50%",
+                      top: coverImagePosition?.split(" ")[1] ?? "50%",
+                    }}
+                  />
+                )}
+              </div>
+              {coverImageUrl && (
+                <p className="text-xs text-gray-500">Kéo hoặc bấm vào ảnh để chọn phần sẽ hiển thị trong khung.</p>
+              )}
               <label>
                 <Button as="span" variant="ghost" className="mt-2 !px-0" disabled={uploading}>
                   {uploading

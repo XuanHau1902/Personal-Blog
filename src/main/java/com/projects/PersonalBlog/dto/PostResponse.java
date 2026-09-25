@@ -17,10 +17,13 @@ public class PostResponse {
     private String title;
     private String content;
     private String coverImageUrl;
+    private String coverImagePosition;
     private boolean published;
     private String authorUsername;
     private Set<String> tags;
     private Long likeCount;
     private boolean likedByCurrentUser;
+
+
 
 }

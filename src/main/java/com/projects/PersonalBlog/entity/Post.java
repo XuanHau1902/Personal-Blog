@@ -35,6 +35,9 @@ public class Post {
 
     private String coverImageUrl;
 
+    private String coverImagePosition;
+
+
     @ManyToOne(fetch = FetchType.LAZY) // thiết lập quan hệ nhiều-một giữa Post và User, với việc tải dữ liệu của User được thực hiện theo cách lười biếng (lazy loading).
     @JoinColumn (name = "author_id", nullable = false) // chỉ định tên cột trong bảng Post để lưu trữ khóa ngoại liên kết đến User, và cột này không được phép null.
     private User author;

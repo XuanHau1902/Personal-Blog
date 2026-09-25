@@ -22,5 +22,7 @@ public class PostRequest {
 
     private boolean published;
 
+    private String coverImagePosition;
+
     private List<String> tagNames = new ArrayList<>();
 }

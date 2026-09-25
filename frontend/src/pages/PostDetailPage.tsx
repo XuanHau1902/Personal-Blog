@@ -4,6 +4,7 @@ import { api } from "../api";
 import { getCurrentUsername, isAdmin } from "../lib/auth";
 import Navbar from "../components/Navbar";
 import PostThumbnail from "../components/PostThumbnail";
+import ImageLightbox from "../components/ImageLightbox";
 import PostContent from "../components/PostContent";
 import PostMenu from "../components/PostMenu";
 import PostActions from "../components/PostActions";
@@ -19,6 +20,7 @@ export default function PostDetailPage() {
   const [commentCount, setCommentCount] = useState(0);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
+  const [thumbnailOpen, setThumbnailOpen] = useState(false);
   const canManage = post !== null && (post.authorUsername === getCurrentUsername() || isAdmin());
 
   useEffect(() => {
@@ -70,6 +72,8 @@ export default function PostDetailPage() {
                     postId={post.id}
                     title={post.title}
                     coverImageUrl={post.coverImageUrl}
+                    coverImagePosition={post.coverImagePosition}
+                    onClick={post.coverImageUrl ? () => setThumbnailOpen(true) : undefined}
                     className="aspect-[16/9] w-full"
                   />
                   <Link
@@ -125,6 +129,10 @@ export default function PostDetailPage() {
           />
         )}
       </div>
+
+      {thumbnailOpen && post?.coverImageUrl && (
+        <ImageLightbox urls={[post.coverImageUrl]} initialIndex={0} onClose={() => setThumbnailOpen(false)} />
+      )}
     </div>
   );
 }
