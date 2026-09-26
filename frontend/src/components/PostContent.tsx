@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import { splitContent } from "../lib/galleryContent";
 import ImageCarousel from "./ImageCarousel";
 
@@ -30,7 +31,7 @@ export default function PostContent({ content }: { content: string }) {
         segment.type === "gallery" ? (
           <ImageCarousel key={i} urls={segment.urls} />
         ) : (
-          <ReactMarkdown key={i} components={markdownComponents}>
+          <ReactMarkdown key={i} remarkPlugins={[remarkBreaks]} components={markdownComponents}>
             {segment.value}
           </ReactMarkdown>
         )

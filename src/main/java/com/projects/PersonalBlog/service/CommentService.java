@@ -33,10 +33,22 @@ public class CommentService {
 
         Post post = postRepository.findById(postId)
             .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        
+        Comment parent = null;
+        if(request.getParentId() != null) {
+            parent = commentRepository.findById(request.getParentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
+
+            if (parent.getParent() != null) {
+                parent = parent.getParent();
+            }
+        }
+
         Comment comment = new Comment();
         comment.setAuthor(author);
         comment.setContent(request.getContent());
         comment.setPost(post);
+        comment.setParent(parent);
 
         Comment saveComment = commentRepository.save(comment);
         return mapToResponse(saveComment);
@@ -50,6 +62,7 @@ public class CommentService {
     public void delete(Long id) {
         Comment comment = commentRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
+        commentRepository.deleteAll(commentRepository.findByParentId(id));
         commentRepository.delete(comment);
     }
 
@@ -60,7 +73,8 @@ public class CommentService {
             comment.getAuthor().getUsername(),
             comment.getAuthor().getAvatarUrl(),
             comment.getAuthor().getAvatarPosition(),
-            comment.getPost().getId()
+            comment.getPost().getId(),
+            comment.getParent() != null ? comment.getParent().getId() : null
         );
     }
         

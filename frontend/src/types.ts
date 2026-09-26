@@ -31,6 +31,7 @@ export interface CommentResponse {
   authorAvatarUrl: string | null;
   authorAvatarPosition: string | null;
   postId: number;
+  parentId: number | null;
 }
 
 export interface Page<T> {
