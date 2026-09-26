@@ -141,10 +141,11 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
 
   return (
     <div
-      className={`${
-        open ? "fixed inset-0 z-50" : "pointer-events-none fixed inset-0 z-50 opacity-0"
-      } shrink-0 overflow-hidden bg-gray-950 transition-[width] duration-300 ease-out md:sticky md:top-0 md:z-auto md:h-[80vh] md:border-l md:border-white/10`}
-      style={{ width: open ? undefined : 0 }}
+      className={`fixed inset-0 z-50 shrink-0 overflow-hidden bg-gray-950 transition-all duration-300 ease-out ${
+        open
+          ? "opacity-100 translate-y-0 md:w-[360px]"
+          : "pointer-events-none translate-y-6 opacity-0 md:w-0"
+      } md:sticky md:top-0 md:z-auto md:h-[80vh] md:translate-y-0 md:opacity-100 md:border-l md:border-white/10`}
     >
       <div className="flex h-full w-full flex-col md:w-[360px]">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
