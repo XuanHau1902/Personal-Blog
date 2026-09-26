@@ -2,9 +2,11 @@ import { useEffect, useState, type ChangeEvent, type PointerEvent as ReactPointe
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { buildGalleryBlock, splitContent } from "../lib/galleryContent";
 import { getCurrentUsername, isAdmin } from "../lib/auth";
+import { queryKeys } from "../lib/queryKeys";
 import { postEditorSchema, type PostEditorFormValues } from "../lib/schemas";
 import { uploadFile } from "../lib/upload";
 import Navbar from "../components/Navbar";
@@ -32,6 +34,7 @@ function unpackContent(raw: string): { body: string; galleryUrls: string[] } {
 
 export default function PostEditorPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { id } = useParams();
   const isEditMode = Boolean(id);
 
@@ -40,7 +43,6 @@ export default function PostEditorPage() {
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [addingImages, setAddingImages] = useState(false);
-  const [loading, setLoading] = useState(isEditMode);
   const [error, setError] = useState("");
 
   const {
@@ -56,30 +58,34 @@ export default function PostEditorPage() {
 
   const titleValue = watch("title");
 
+  const {
+    data: existingPost,
+    error: loadError,
+    isLoading: loading,
+  } = useQuery({
+    queryKey: queryKeys.posts.detail(id ?? ""),
+    queryFn: async () => (await api.get<PostResponse>(`/posts/${id}`)).data,
+    enabled: Boolean(id),
+  });
+
   useEffect(() => {
-    if (!id) return;
-    api
-      .get<PostResponse>(`/posts/${id}`)
-      .then((res) => {
-        const post = res.data;
-        if (post.authorUsername !== getCurrentUsername() && !isAdmin()) {
-          navigate(`/posts/${id}`, { replace: true });
-          return;
-        }
-        const { body, galleryUrls: urls } = unpackContent(post.content);
-        reset({
-          title: post.title,
-          content: body,
-          tags: post.tags.join(", "),
-          published: post.published,
-        });
-        setGalleryUrls(urls);
-        setCoverImageUrl(post.coverImageUrl);
-        setCoverImagePosition(post.coverImagePosition);
-        setLoading(false);
-      })
-      .catch(() => setError("Không tải được bài viết."));
-  }, [id, navigate, reset]);
+    if (!existingPost) return;
+    if (existingPost.authorUsername !== getCurrentUsername() && !isAdmin()) {
+      navigate(`/posts/${id}`, { replace: true });
+      return;
+    }
+    const { body, galleryUrls: urls } = unpackContent(existingPost.content);
+    reset({
+      title: existingPost.title,
+      content: body,
+      tags: existingPost.tags.join(", "),
+      published: existingPost.published,
+    });
+    setGalleryUrls(urls);
+    setCoverImageUrl(existingPost.coverImageUrl);
+    setCoverImagePosition(existingPost.coverImagePosition);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingPost]);
 
   async function handleThumbnailChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -126,32 +132,43 @@ export default function PostEditorPage() {
     }
   }
 
+  const saveMutation = useMutation({
+    mutationFn: async (payload: {
+      title: string;
+      content: string;
+      coverImageUrl: string | null;
+      coverImagePosition: string | null;
+      published: boolean;
+      tagNames: string[];
+    }) =>
+      isEditMode
+        ? (await api.put<PostResponse>(`/posts/${id}`, payload)).data
+        : (await api.post<PostResponse>("/posts", payload)).data,
+    onSuccess: (saved) => {
+      queryClient.setQueryData(queryKeys.posts.detail(saved.id), saved);
+      queryClient.invalidateQueries({ queryKey: ["posts", "list"] });
+      navigate(`/posts/${saved.id}`);
+    },
+    onError: () => {
+      setError(isEditMode ? "Lưu thay đổi thất bại. Vui lòng thử lại." : "Đăng bài thất bại. Vui lòng thử lại.");
+    },
+  });
+
   async function onSubmit(values: PostEditorFormValues) {
     setError("");
-    try {
-      const tagNames = values.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
+    const tagNames = values.tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
 
-      const fullContent = values.content + buildGalleryBlock(galleryUrls);
-      const payload = {
-        title: values.title,
-        content: fullContent,
-        coverImageUrl,
-        coverImagePosition,
-        published: values.published,
-        tagNames,
-      };
-
-      const res = isEditMode
-        ? await api.put<PostResponse>(`/posts/${id}`, payload)
-        : await api.post<PostResponse>("/posts", payload);
-
-      navigate(`/posts/${res.data.id}`);
-    } catch {
-      setError(isEditMode ? "Lưu thay đổi thất bại. Vui lòng thử lại." : "Đăng bài thất bại. Vui lòng thử lại.");
-    }
+    saveMutation.mutate({
+      title: values.title,
+      content: values.content + buildGalleryBlock(galleryUrls),
+      coverImageUrl,
+      coverImagePosition,
+      published: values.published,
+      tagNames,
+    });
   }
 
   return (
@@ -162,6 +179,8 @@ export default function PostEditorPage() {
         <h1 className="text-3xl font-extrabold text-white md:text-4xl">
           {isEditMode ? "Chỉnh sửa bài viết" : "Viết bài mới"}
         </h1>
+
+        {loadError && <p className="mt-8 text-sm text-red-500">Không tải được bài viết.</p>}
 
         {loading ? (
           <p className="mt-12 text-sm text-gray-400">Đang tải...</p>
@@ -257,8 +276,8 @@ export default function PostEditorPage() {
               Xuất bản ngay
             </label>
 
-            <Button type="submit" disabled={isSubmitting || uploading}>
-              {isSubmitting ? "Đang lưu..." : isEditMode ? "Lưu thay đổi" : "Đăng bài"}
+            <Button type="submit" disabled={isSubmitting || uploading || saveMutation.isPending}>
+              {isSubmitting || saveMutation.isPending ? "Đang lưu..." : isEditMode ? "Lưu thay đổi" : "Đăng bài"}
             </Button>
           </form>
         )}

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { getCurrentUsername, isAdmin } from "../lib/auth";
+import { queryKeys } from "../lib/queryKeys";
 import Navbar from "../components/Navbar";
 import PostThumbnail from "../components/PostThumbnail";
 import Avatar from "../components/Avatar";
@@ -10,63 +12,85 @@ import PostContent from "../components/PostContent";
 import PostMenu from "../components/PostMenu";
 import PostActions from "../components/PostActions";
 import CommentPanel from "../components/CommentPanel";
+import Skeleton from "../components/Skeleton";
 import type { LikeResponse, PostResponse } from "../types";
 
 export default function PostDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [post, setPost] = useState<PostResponse | null>(null);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
   const [thumbnailOpen, setThumbnailOpen] = useState(false);
-  const canManage = post !== null && (post.authorUsername === getCurrentUsername() || isAdmin());
 
-  useEffect(() => {
-    api
-      .get<PostResponse>(`/posts/${id}`)
-      .then((res) => {
-        setPost(res.data);
-        setLiked(res.data.likedByCurrentUser);
-        setLikeCount(res.data.likeCount);
-      })
-      .catch(() => setError("Không tìm thấy bài viết."));
-  }, [id]);
+  const {
+    data: post,
+    error,
+    isLoading,
+  } = useQuery({
+    queryKey: queryKeys.posts.detail(id!),
+    queryFn: async () => (await api.get<PostResponse>(`/posts/${id}`)).data,
+    enabled: Boolean(id),
+  });
 
-  async function handleToggleLike() {
+  const canManage = post !== undefined && (post.authorUsername === getCurrentUsername() || isAdmin());
+
+  const likeMutation = useMutation({
+    mutationFn: async () => (await api.post<LikeResponse>(`/posts/${id}/likes`)).data,
+    onMutate: async () => {
+      const key = queryKeys.posts.detail(id!);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<PostResponse>(key);
+      if (previous) {
+        queryClient.setQueryData<PostResponse>(key, {
+          ...previous,
+          likedByCurrentUser: !previous.likedByCurrentUser,
+          likeCount: previous.likedByCurrentUser ? previous.likeCount - 1 : previous.likeCount + 1,
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.posts.detail(id!), context.previous);
+      }
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData<PostResponse>(queryKeys.posts.detail(id!), (prev) =>
+        prev ? { ...prev, likedByCurrentUser: data.liked, likeCount: data.likeCount } : prev
+      );
+    },
+  });
+
+  function handleToggleLike() {
     if (!getCurrentUsername()) {
       navigate("/login");
       return;
     }
-    // Optimistic update — reverted if the request fails.
-    const prevLiked = liked;
-    const prevCount = likeCount;
-    setLiked(!prevLiked);
-    setLikeCount(prevLiked ? prevCount - 1 : prevCount + 1);
-    try {
-      const res = await api.post<LikeResponse>(`/posts/${id}/likes`);
-      setLiked(res.data.liked);
-      setLikeCount(res.data.likeCount);
-    } catch {
-      setLiked(prevLiked);
-      setLikeCount(prevCount);
-    }
+    likeMutation.mutate();
   }
 
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
 
-      <div className="flex items-start">
+      <div className="flex flex-col md:flex-row md:items-start">
         <main className="min-w-0 flex-1">
-          {error && <p className="mt-8 px-6 text-sm text-red-500 md:px-12">{error}</p>}
+          {error && <p className="mt-8 px-6 text-sm text-red-500 md:px-12">Không tìm thấy bài viết.</p>}
 
-          {!post && !error && <p className="mt-12 px-6 text-sm text-gray-400 md:px-12">Đang tải...</p>}
+          {isLoading && (
+            <div className="mx-auto max-w-3xl space-y-4 px-6 pb-24 pt-3 md:px-12">
+              <Skeleton className="h-9 w-40" />
+              <Skeleton className="aspect-[16/9] w-full" />
+              <Skeleton className="h-10 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          )}
 
           {post && (
-            <div className="mx-auto flex max-w-3xl gap-4 px-6 pb-24 md:px-12">
+            <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 pb-24 md:flex-row md:px-12">
               <article className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 text-sm text-gray-400">
                   <Avatar
@@ -115,10 +139,10 @@ export default function PostDetailPage() {
                 <PostContent content={post.content} />
               </article>
 
-              <div className="flex shrink-0 items-start pt-8">
+              <div className="flex items-start pt-4 md:shrink-0 md:pt-8">
                 <PostActions
-                  liked={liked}
-                  likeCount={likeCount}
+                  liked={post.likedByCurrentUser}
+                  likeCount={post.likeCount}
                   onToggleLike={handleToggleLike}
                   commentCount={commentCount}
                   commentsOpen={commentsOpen}

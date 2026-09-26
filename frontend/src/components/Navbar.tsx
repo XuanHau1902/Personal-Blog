@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { getCurrentUsername } from "../lib/auth";
+import { queryKeys } from "../lib/queryKeys";
 import Button from "./Button";
 import Avatar from "./Avatar";
 import EditAvatarModal from "./EditAvatarModal";
@@ -9,18 +11,16 @@ import type { UserProfile } from "../types";
 
 function AccountMenu() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const username = getCurrentUsername() ?? "";
   const [open, setOpen] = useState(false);
   const [editingAvatar, setEditingAvatar] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    api
-      .get<UserProfile>("/users/me")
-      .then((res) => setProfile(res.data))
-      .catch(() => {});
-  }, []);
+  const { data: profile } = useQuery({
+    queryKey: queryKeys.users.me(),
+    queryFn: async () => (await api.get<UserProfile>("/users/me")).data,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -116,7 +116,7 @@ function AccountMenu() {
         <EditAvatarModal
           profile={profile}
           onClose={() => setEditingAvatar(false)}
-          onSaved={(updated) => setProfile(updated)}
+          onSaved={(updated) => queryClient.setQueryData(queryKeys.users.me(), updated)}
         />
       )}
     </div>

@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { getCurrentUsername } from "../lib/auth";
+import { queryKeys } from "../lib/queryKeys";
 import type { CommentResponse } from "../types";
 import Button from "./Button";
 import Avatar from "./Avatar";
+import Skeleton from "./Skeleton";
 
 interface Props {
   postId: number;
@@ -43,31 +46,42 @@ function CommentRow({
   );
 }
 
+function CommentRowSkeleton({ size }: { size: number }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Skeleton className="shrink-0 rounded-full" style={{ width: size, height: size }} />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-3 w-full" />
+      </div>
+    </div>
+  );
+}
+
 export default function CommentPanel({ postId, open, onClose, onCountChange }: Props) {
-  const [comments, setComments] = useState<CommentResponse[] | null>(null);
+  const queryClient = useQueryClient();
   const [text, setText] = useState("");
-  const [posting, setPosting] = useState(false);
-  const [error, setError] = useState("");
   const [replyingTo, setReplyingTo] = useState<{ rootId: number; targetId: number; targetUsername: string } | null>(
     null
   );
   const [replyText, setReplyText] = useState("");
-  const [postingReply, setPostingReply] = useState(false);
   const [collapsedRoots, setCollapsedRoots] = useState<Set<number>>(new Set());
   const isAuthed = Boolean(getCurrentUsername());
+  const commentsKey = queryKeys.comments.byPost(postId);
 
-  useEffect(() => {
-    api
-      .get<CommentResponse[]>(`/comments/posts/${postId}`)
-      .then((res) => setComments(res.data))
-      .catch(() => setError("Không tải được bình luận."));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId]);
+  const {
+    data: comments,
+    error,
+    isLoading,
+  } = useQuery({
+    queryKey: commentsKey,
+    queryFn: async () => (await api.get<CommentResponse[]>(`/comments/posts/${postId}`)).data,
+  });
 
   // Reporting the count to the parent is a side effect of `comments` changing,
   // not something to do inside a setState updater (that runs during render).
   useEffect(() => {
-    if (comments !== null) onCountChange(comments.length);
+    if (comments !== undefined) onCountChange(comments.length);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comments]);
 
@@ -80,33 +94,30 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
       repliesByRoot.set(key, [...(repliesByRoot.get(key) ?? []), c]);
     });
 
+  const postCommentMutation = useMutation({
+    mutationFn: async (payload: { content: string; parentId?: number }) =>
+      (await api.post<CommentResponse>(`/comments/posts/${postId}`, payload)).data,
+    onSuccess: (created) => {
+      queryClient.setQueryData<CommentResponse[]>(commentsKey, (prev) => [...(prev ?? []), created]);
+    },
+  });
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
-    setPosting(true);
-    setError("");
     try {
-      const res = await api.post<CommentResponse>(`/comments/posts/${postId}`, { content: text });
-      setComments((prev) => [...(prev ?? []), res.data]);
+      await postCommentMutation.mutateAsync({ content: text });
       setText("");
     } catch {
-      setError("Đăng bình luận thất bại.");
-    } finally {
-      setPosting(false);
+      // error surfaced below via postCommentMutation.isError
     }
   }
 
   async function handleReplySubmit() {
     if (!replyText.trim() || !replyingTo) return;
     const { rootId, targetId } = replyingTo;
-    setPostingReply(true);
-    setError("");
     try {
-      const res = await api.post<CommentResponse>(`/comments/posts/${postId}`, {
-        content: replyText,
-        parentId: targetId,
-      });
-      setComments((prev) => [...(prev ?? []), res.data]);
+      await postCommentMutation.mutateAsync({ content: replyText, parentId: targetId });
       setReplyText("");
       setReplyingTo(null);
       setCollapsedRoots((prev) => {
@@ -115,9 +126,7 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
         return next;
       });
     } catch {
-      setError("Đăng trả lời thất bại.");
-    } finally {
-      setPostingReply(false);
+      // error surfaced below via postCommentMutation.isError
     }
   }
 
@@ -132,10 +141,12 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
 
   return (
     <div
-      className="sticky top-0 h-[80vh] shrink-0 overflow-hidden border-l border-white/10 bg-gray-950 transition-[width] duration-300 ease-out"
-      style={{ width: open ? 360 : 0 }}
+      className={`${
+        open ? "fixed inset-0 z-50" : "pointer-events-none fixed inset-0 z-50 opacity-0"
+      } shrink-0 overflow-hidden bg-gray-950 transition-[width] duration-300 ease-out md:sticky md:top-0 md:z-auto md:h-[80vh] md:border-l md:border-white/10`}
+      style={{ width: open ? undefined : 0 }}
     >
-      <div className="flex h-full w-[360px] flex-col">
+      <div className="flex h-full w-full flex-col md:w-[360px]">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
           <h2 className="text-sm font-semibold text-white">Bình luận</h2>
           <button
@@ -151,11 +162,20 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-sm text-red-500">Không tải được bình luận.</p>}
+          {postCommentMutation.isError && (
+            <p className="mb-2 text-sm text-red-500">Đăng bình luận thất bại. Vui lòng thử lại.</p>
+          )}
 
-          {comments === null && !error && <p className="text-sm text-gray-500">Đang tải...</p>}
+          {isLoading && (
+            <div className="space-y-4">
+              <CommentRowSkeleton size={26} />
+              <CommentRowSkeleton size={26} />
+              <CommentRowSkeleton size={26} />
+            </div>
+          )}
 
-          {comments !== null && comments.length === 0 && (
+          {comments !== undefined && comments.length === 0 && (
             <p className="text-sm text-gray-500">Chưa có bình luận nào. Hãy là người đầu tiên!</p>
           )}
 
@@ -232,7 +252,7 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
                       />
                       <Button
                         type="submit"
-                        disabled={postingReply || !replyText.trim()}
+                        disabled={postCommentMutation.isPending || !replyText.trim()}
                         className="!px-3 !py-2 text-xs"
                       >
                         Gửi
@@ -255,7 +275,7 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
                 rows={1}
                 className="flex-1 resize-none rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white outline-none placeholder:text-gray-500 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20"
               />
-              <Button type="submit" disabled={posting || !text.trim()} className="!px-3 !py-2 text-xs">
+              <Button type="submit" disabled={postCommentMutation.isPending || !text.trim()} className="!px-3 !py-2 text-xs">
                 Gửi
               </Button>
             </form>

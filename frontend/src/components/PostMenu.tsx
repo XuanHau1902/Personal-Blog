@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
+import { queryKeys } from "../lib/queryKeys";
 
 export default function PostMenu({ postId }: { postId: number }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,16 +21,19 @@ export default function PostMenu({ postId }: { postId: number }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  async function handleDelete() {
-    if (!window.confirm("Xoá bài viết này? Hành động này không thể hoàn tác.")) return;
-    setDeleting(true);
-    try {
-      await api.delete(`/posts/${postId}`);
+  const deleteMutation = useMutation({
+    mutationFn: async () => api.delete(`/posts/${postId}`),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: queryKeys.posts.detail(postId) });
+      queryClient.invalidateQueries({ queryKey: ["posts", "list"] });
       navigate("/");
-    } catch {
-      window.alert("Xoá bài viết thất bại. Vui lòng thử lại.");
-      setDeleting(false);
-    }
+    },
+    onError: () => window.alert("Xoá bài viết thất bại. Vui lòng thử lại."),
+  });
+
+  function handleDelete() {
+    if (!window.confirm("Xoá bài viết này? Hành động này không thể hoàn tác.")) return;
+    deleteMutation.mutate();
   }
 
   return (
@@ -58,10 +63,10 @@ export default function PostMenu({ postId }: { postId: number }) {
           <button
             type="button"
             onClick={handleDelete}
-            disabled={deleting}
+            disabled={deleteMutation.isPending}
             className="block w-full px-4 py-2 text-left text-sm text-red-400 transition hover:bg-white/10 disabled:opacity-50"
           >
-            {deleting ? "Đang xoá..." : "Xoá bài viết"}
+            {deleteMutation.isPending ? "Đang xoá..." : "Xoá bài viết"}
           </button>
         </div>
       )}
