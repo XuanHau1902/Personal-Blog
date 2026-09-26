@@ -4,6 +4,7 @@ import { api } from "../api";
 import { getCurrentUsername, isAdmin } from "../lib/auth";
 import Navbar from "../components/Navbar";
 import PostThumbnail from "../components/PostThumbnail";
+import Avatar from "../components/Avatar";
 import ImageLightbox from "../components/ImageLightbox";
 import PostContent from "../components/PostContent";
 import PostMenu from "../components/PostMenu";
@@ -58,7 +59,7 @@ export default function PostDetailPage() {
     <div className="min-h-screen bg-black">
       <Navbar />
 
-      <div className="flex">
+      <div className="flex items-start">
         <main className="min-w-0 flex-1">
           {error && <p className="mt-8 px-6 text-sm text-red-500 md:px-12">{error}</p>}
 
@@ -67,7 +68,16 @@ export default function PostDetailPage() {
           {post && (
             <div className="mx-auto flex max-w-3xl gap-4 px-6 pb-24 md:px-12">
               <article className="min-w-0 flex-1">
-                <div className="relative">
+                <p className="flex items-center gap-2 text-sm text-gray-400">
+                  <Avatar
+                    username={post.authorUsername}
+                    avatarUrl={post.authorAvatarUrl}
+                    avatarPosition={post.authorAvatarPosition}
+                    size={36}
+                  />
+                  {post.authorUsername}
+                </p>
+                <div className="relative mt-3">
                   <PostThumbnail
                     postId={post.id}
                     title={post.title}
@@ -87,8 +97,7 @@ export default function PostDetailPage() {
                   </Link>
                   {canManage && <PostMenu postId={post.id} />}
                 </div>
-                <p className="mt-6 text-sm text-gray-400">{post.authorUsername}</p>
-                <h1 className="mt-2 break-words text-3xl font-extrabold leading-tight text-white md:text-4xl">
+                <h1 className="mt-6 break-words text-3xl font-extrabold leading-tight text-white md:text-4xl">
                   {post.title}
                 </h1>
                 {post.tags.length > 0 && (

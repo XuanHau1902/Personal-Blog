@@ -6,9 +6,17 @@ export interface PostResponse {
   coverImagePosition: string | null;
   published: boolean;
   authorUsername: string;
+  authorAvatarUrl: string | null;
+  authorAvatarPosition: string | null;
   tags: string[];
   likeCount: number;
   likedByCurrentUser: boolean;
+}
+
+export interface UserProfile {
+  username: string;
+  avatarUrl: string | null;
+  avatarPosition: string | null;
 }
 
 export interface LikeResponse {
@@ -20,6 +28,8 @@ export interface CommentResponse {
   id: number;
   content: string;
   authorUsername: string;
+  authorAvatarUrl: string | null;
+  authorAvatarPosition: string | null;
   postId: number;
 }
 

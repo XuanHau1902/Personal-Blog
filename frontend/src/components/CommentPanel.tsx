@@ -4,6 +4,7 @@ import { api } from "../api";
 import { getCurrentUsername } from "../lib/auth";
 import type { CommentResponse } from "../types";
 import Button from "./Button";
+import Avatar from "./Avatar";
 
 interface Props {
   postId: number;
@@ -52,7 +53,7 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
 
   return (
     <div
-      className="shrink-0 overflow-hidden border-l border-white/10 bg-gray-950 transition-[width] duration-300 ease-out"
+      className="sticky top-0 h-[80vh] shrink-0 overflow-hidden border-l border-white/10 bg-gray-950 transition-[width] duration-300 ease-out"
       style={{ width: open ? 360 : 0 }}
     >
       <div className="flex h-full w-[360px] flex-col">
@@ -82,7 +83,15 @@ export default function CommentPanel({ postId, open, onClose, onCountChange }: P
           <ul className="space-y-4">
             {comments?.map((c) => (
               <li key={c.id}>
-                <p className="text-xs font-medium text-gray-400">{c.authorUsername}</p>
+                <p className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
+                  <Avatar
+                    username={c.authorUsername}
+                    avatarUrl={c.authorAvatarUrl}
+                    avatarPosition={c.authorAvatarPosition}
+                    size={26}
+                  />
+                  {c.authorUsername}
+                </p>
                 <p className="mt-0.5 break-words text-sm text-gray-200">{c.content}</p>
               </li>
             ))}

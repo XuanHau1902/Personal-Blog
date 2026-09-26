@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { PostResponse } from "../types";
 import { stripGalleryBlocks } from "../lib/galleryContent";
 import PostThumbnail from "./PostThumbnail";
+import Avatar from "./Avatar";
 
 function excerpt(content: string, max = 140): string {
   const plain = stripGalleryBlocks(content)
@@ -33,7 +34,15 @@ export default function PostCard({ post, featured = false }: Props) {
             className="aspect-[4/3] w-full"
           />
           <div>
-            <p className="text-sm text-gray-400">{post.authorUsername}</p>
+            <p className="flex items-center gap-2 text-sm text-gray-400">
+              <Avatar
+                username={post.authorUsername}
+                avatarUrl={post.authorAvatarUrl}
+                avatarPosition={post.authorAvatarPosition}
+                size={30}
+              />
+              {post.authorUsername}
+            </p>
             <h2 className="mt-2 break-words text-2xl font-extrabold leading-tight text-white md:text-3xl">
               {post.title}
             </h2>
@@ -58,7 +67,15 @@ export default function PostCard({ post, featured = false }: Props) {
         coverImagePosition={post.coverImagePosition}
         className="aspect-[4/3] w-full"
       />
-      <p className="mt-3 text-xs text-gray-400">{post.authorUsername}</p>
+      <p className="mt-3 flex items-center gap-1.5 text-xs text-gray-400">
+        <Avatar
+          username={post.authorUsername}
+          avatarUrl={post.authorAvatarUrl}
+          avatarPosition={post.authorAvatarPosition}
+          size={26}
+        />
+        {post.authorUsername}
+      </p>
       <h3 className="mt-1 break-words text-lg font-bold leading-snug text-white">{post.title}</h3>
       <p className="mt-2 break-words text-sm leading-relaxed text-gray-500">{excerpt(post.content)}</p>
     </Link>

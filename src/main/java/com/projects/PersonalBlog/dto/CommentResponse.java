@@ -13,5 +13,7 @@ public class CommentResponse {
     private Long id;
     private String content;
     private String authorUsername;
+    private String authorAvatarUrl;
+    private String authorAvatarPosition;
     private Long postId;
 }

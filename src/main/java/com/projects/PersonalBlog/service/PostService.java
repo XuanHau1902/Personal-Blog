@@ -172,6 +172,8 @@ public class PostService {
                 post.getCoverImagePosition(),
                 post.isPublished(),
                 post.getAuthor().getUsername(),
+                post.getAuthor().getAvatarUrl(),
+                post.getAuthor().getAvatarPosition(),
                 tagNames,likeCount, liked
             );
     }

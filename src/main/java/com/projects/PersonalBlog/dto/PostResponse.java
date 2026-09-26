@@ -20,6 +20,8 @@ public class PostResponse {
     private String coverImagePosition;
     private boolean published;
     private String authorUsername;
+    private String authorAvatarUrl;
+    private String authorAvatarPosition;
     private Set<String> tags;
     private Long likeCount;
     private boolean likedByCurrentUser;

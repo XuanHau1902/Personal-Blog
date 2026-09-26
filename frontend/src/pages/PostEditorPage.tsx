@@ -6,6 +6,7 @@ import { api } from "../api";
 import { buildGalleryBlock, splitContent } from "../lib/galleryContent";
 import { getCurrentUsername, isAdmin } from "../lib/auth";
 import { postEditorSchema, type PostEditorFormValues } from "../lib/schemas";
+import { uploadFile } from "../lib/upload";
 import Navbar from "../components/Navbar";
 import Button from "../components/Button";
 import Input from "../components/Input";
@@ -13,15 +14,6 @@ import Textarea from "../components/Textarea";
 import PostThumbnail from "../components/PostThumbnail";
 import ImageCarousel from "../components/ImageCarousel";
 import type { PostResponse } from "../types";
-
-async function uploadFile(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await api.post<{ url: string }>("/files/upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return res.data.url;
-}
 
 /** Reverses splitContent()/buildGalleryBlock(): pulls the plain body text and
  * the accumulated gallery URLs back out of a saved post's content string. */

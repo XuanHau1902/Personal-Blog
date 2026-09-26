@@ -58,6 +58,8 @@ public class CommentService {
             comment.getId(),
             comment.getContent(),
             comment.getAuthor().getUsername(),
+            comment.getAuthor().getAvatarUrl(),
+            comment.getAuthor().getAvatarPosition(),
             comment.getPost().getId()
         );
     }
